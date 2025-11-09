@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../WhisperDesk-1/src/renderer/whisperdesk-ui/src/*"],
+      "@wd/*": ["../WhisperDesk-1/src/renderer/whisperdesk-ui/src/*"]
+    }
+  }
+}
