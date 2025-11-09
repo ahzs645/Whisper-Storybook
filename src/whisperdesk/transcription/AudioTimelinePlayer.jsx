@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Slider } from '@wd/components/ui/slider';
 import { Play, Pause, Volume2, VolumeX, MoreHorizontal } from 'lucide-react';
 
@@ -94,9 +94,10 @@ const SegmentWaveform = ({ samples, isActive, theme }) => {
   );
 };
 
-const SegmentTextColumn = ({ segment, widthPercent, isActive, formatTime, theme }) => {
+const SegmentTextColumn = ({ segment, startPercent, endPercent, isActive, formatTime, theme }) => {
   const startTime = Number.isFinite(segment.start) ? segment.start : 0;
   const endTime = Number.isFinite(segment.end) ? segment.end : startTime;
+  const widthPercent = Math.max(0, endPercent - startPercent);
 
   return (
     <div
@@ -108,8 +109,9 @@ const SegmentTextColumn = ({ segment, widthPercent, isActive, formatTime, theme 
           : 'bg-transparent'
       }`}
       style={{
-        flexBasis: `${Math.max(widthPercent * 100, 12)}%`,
-        flexGrow: Math.max(widthPercent * 120, 1),
+        flexBasis: `${widthPercent * 100}%`,
+        flexGrow: 0,
+        flexShrink: 0,
       }}
     >
       <div
@@ -150,6 +152,7 @@ const SegmentWaveChunk = ({ startPercent, endPercent, theme, isActive }) => {
         width: `${width}%`,
         borderLeft: `1px solid ${borderColor}`,
         backgroundColor: isActive ? activeBg : 'transparent',
+        pointerEvents: 'none',
       }}
     />
   );
@@ -231,6 +234,9 @@ export function AudioTimelinePlayer({
     return () => observer.disconnect();
   }, [appearance, detectDocumentTheme]);
 
+  const textRowRef = useRef(null);
+  const waveRowRef = useRef(null);
+
   const segmentsWithMeta = useMemo(() => {
     if (!normalizedSegments.length) return [];
     return normalizedSegments.map((segment, index) => {
@@ -266,6 +272,26 @@ export function AudioTimelinePlayer({
     });
     return active?.segment.id ?? null;
   }, [segmentsWithMeta, currentTime]);
+
+  const scrollActiveIntoView = useCallback(
+    (container) => {
+      if (!container || !activeSegmentId) return;
+      const activeMeta = segmentsWithMeta.find(({ segment }) => segment.id === activeSegmentId);
+      if (!activeMeta) return;
+
+      const target = activeMeta.startPercent * container.scrollWidth;
+      container.scrollTo({
+        left: target,
+        behavior: 'smooth',
+      });
+    },
+    [activeSegmentId, segmentsWithMeta],
+  );
+
+  useEffect(() => {
+    scrollActiveIntoView(textRowRef.current);
+    scrollActiveIntoView(waveRowRef.current);
+  }, [scrollActiveIntoView]);
 
   useEffect(() => {
     if (!isPlaying) return undefined;
@@ -376,29 +402,41 @@ export function AudioTimelinePlayer({
       <div className="flex flex-col gap-4 px-4 py-4">
         {segmentsWithMeta.length > 0 ? (
           <>
-            <div className={`flex gap-3 rounded-lg border px-3 py-4 ${theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-[#101524]'}`}>
-              {segmentsWithMeta.map(({ segment, widthPercent }) => (
-                <SegmentTextColumn
-                  key={`${segment.id}-text`}
-                  segment={segment}
-                  widthPercent={widthPercent}
-                  isActive={segment.id === activeSegmentId}
-                  theme={theme}
-                  formatTime={(value) => formatTimestamp(value, true)}
+            <div
+              ref={textRowRef}
+              className={`flex rounded-lg border px-3 py-4 overflow-x-auto ${theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-[#101524]'}`}
+              style={{ gap: 0 }}
+            >
+      {segmentsWithMeta.map(({ segment, startPercent, endPercent }) => (
+        <SegmentTextColumn
+          key={`${segment.id}-text`}
+          segment={segment}
+          startPercent={startPercent}
+          endPercent={endPercent}
+          isActive={segment.id === activeSegmentId}
+          theme={theme}
+          formatTime={(value) => formatTimestamp(value, true)}
                 />
               ))}
             </div>
-            <div className={`relative h-20 overflow-hidden rounded-lg border ${theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-900 bg-[#0b101d]'}`}>
-              <SegmentWaveform samples={timelineSamples} isActive theme={theme} />
-              {segmentsWithMeta.map(({ segment, startPercent, endPercent }) => (
-                <SegmentWaveChunk
-                  key={`${segment.id}-wave`}
-                  startPercent={startPercent}
-                  endPercent={endPercent}
-                  isActive={segment.id === activeSegmentId}
-                  theme={theme}
-                />
-              ))}
+            <div
+              ref={waveRowRef}
+              className={`relative h-20 overflow-x-auto rounded-lg border ${theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-900 bg-[#0b101d]'}`}
+            >
+              <div className="relative h-full min-w-full">
+                <div className="absolute inset-0 w-full">
+                  <SegmentWaveform samples={timelineSamples} isActive theme={theme} />
+                </div>
+                {segmentsWithMeta.map(({ segment, startPercent, endPercent }) => (
+                  <SegmentWaveChunk
+                    key={`${segment.id}-wave`}
+                    startPercent={startPercent}
+                    endPercent={endPercent}
+                    isActive={segment.id === activeSegmentId}
+                    theme={theme}
+                  />
+                ))}
+              </div>
             </div>
           </>
         ) : (
