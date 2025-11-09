@@ -38,6 +38,9 @@ const mulberry32 = (seed) => {
   };
 };
 
+const PIXELS_PER_SECOND = 12;
+const MIN_SEGMENT_WIDTH = 140;
+
 const buildWaveform = (seed, length = 720) => {
   const random = mulberry32(hashSeed(seed));
   return Array.from({ length }, () => 0.35 + random() * 0.55);
@@ -65,10 +68,10 @@ const buildWavePath = (samples = []) => {
   return `${upper} ${lower} Z`;
 };
 
-const SegmentWaveform = ({ samples, isActive, theme }) => {
+const SegmentWaveform = ({ samples, isActive, theme, className = '' }) => {
   const path = useMemo(() => buildWavePath(samples), [samples]);
   if (!path) {
-    return <div className={`h-12 w-full rounded ${theme === 'light' ? 'bg-slate-200/70' : 'bg-slate-800/70'}`} aria-hidden="true" />;
+    return <div className={`h-32 w-full rounded ${theme === 'light' ? 'bg-slate-200/70' : 'bg-slate-800/70'} ${className}`} aria-hidden="true" />;
   }
   const fill = theme === 'light'
     ? isActive ? 'rgba(15,23,42,0.18)' : 'rgba(100,116,139,0.2)'
@@ -80,7 +83,7 @@ const SegmentWaveform = ({ samples, isActive, theme }) => {
     <svg
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
-      className="h-12 w-full"
+      className={`h-32 w-full ${className}`}
       aria-hidden="true"
     >
       <path
@@ -94,67 +97,55 @@ const SegmentWaveform = ({ samples, isActive, theme }) => {
   );
 };
 
-const SegmentTextColumn = ({ segment, startPercent, endPercent, isActive, formatTime, theme }) => {
-  const startTime = Number.isFinite(segment.start) ? segment.start : 0;
-  const endTime = Number.isFinite(segment.end) ? segment.end : startTime;
-  const widthPercent = Math.max(0, endPercent - startPercent);
+const SEGMENT_CONTENT_HEIGHT = 220;
+
+const SegmentOverlayColumn = ({ segment, startPx, widthPx, theme, isActive }) => {
+  const borderColor = theme === 'light' ? 'rgba(148,163,184,0.5)' : 'rgba(255,255,255,0.08)';
+  const backdrop = theme === 'light' ? 'bg-white/80' : 'bg-black/10';
+  const highlight = theme === 'light' ? 'ring-2 ring-slate-300' : 'ring-2 ring-white/40';
 
   return (
     <div
-      className={`relative flex min-w-[140px] flex-1 flex-col justify-between border-l border-white/10 px-4 py-3 first:border-l-0 ${
-        isActive
-          ? theme === 'light'
-            ? 'bg-slate-100/80'
-            : 'bg-white/10'
-          : 'bg-transparent'
-      }`}
+      className={`absolute inset-y-0 flex flex-col justify-between px-4 py-3 ${backdrop}`}
       style={{
-        flexBasis: `${widthPercent * 100}%`,
-        flexGrow: 0,
-        flexShrink: 0,
+        left: `${startPx}px`,
+        width: `${widthPx}px`,
+        borderLeft: `1px solid ${borderColor}`,
       }}
     >
       <div
         className={`rounded-lg border px-3 py-3 ${
           theme === 'light'
             ? isActive
-              ? 'border-slate-300 bg-white shadow-sm'
-              : 'border-slate-200 bg-white/80'
+              ? `border-slate-300 bg-white shadow-sm ${highlight}`
+              : 'border-slate-200 bg-white'
             : isActive
-              ? 'border-white/30 bg-white/5'
-              : 'border-white/10 bg-white/5/80'
+              ? `border-white/30 bg-white/5 ${highlight}`
+              : 'border-white/10 bg-white/5/70'
         }`}
       >
         <p className={`text-sm font-medium leading-snug ${theme === 'light' ? 'text-slate-800' : 'text-slate-50'}`}>
           {segment.text}
         </p>
       </div>
-      <div className={`mt-2 text-right font-mono text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
-        <span>{formatTime(startTime)}</span>
+      <div
+        className={`flex-1 overflow-hidden rounded-md border px-2 ${
+          theme === 'light' ? 'border-slate-200 bg-slate-100' : 'border-white/20 bg-black/40'
+        }`}
+      >
+        <SegmentWaveform
+          samples={segment.samples}
+          isActive={isActive}
+          theme={theme}
+          className="h-[140px] w-full"
+        />
+      </div>
+      <div className={`text-right font-mono text-[11px] ${theme === 'light' ? 'text-slate-500' : 'text-slate-400'}`}>
+        <span>{formatTimestamp(segment.start ?? 0)}</span>
         <span className={`mx-1 ${theme === 'light' ? 'text-slate-400' : 'text-slate-500'}`}>→</span>
-        <span>{formatTime(endTime)}</span>
+        <span>{formatTimestamp(segment.end ?? 0)}</span>
       </div>
     </div>
-  );
-};
-
-const SegmentWaveChunk = ({ startPercent, endPercent, theme, isActive }) => {
-  const left = Math.max(0, Math.min(startPercent * 100, 100));
-  const width = Math.max(1, Math.min((endPercent - startPercent) * 100, 100 - left));
-  const borderColor = theme === 'light' ? 'rgba(148,163,184,0.5)' : 'rgba(255,255,255,0.08)';
-  const activeBg = theme === 'light' ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.08)';
-
-  return (
-    <div
-      className="absolute inset-y-0"
-      style={{
-        left: `${left}%`,
-        width: `${width}%`,
-        borderLeft: `1px solid ${borderColor}`,
-        backgroundColor: isActive ? activeBg : 'transparent',
-        pointerEvents: 'none',
-      }}
-    />
   );
 };
 
@@ -234,32 +225,27 @@ export function AudioTimelinePlayer({
     return () => observer.disconnect();
   }, [appearance, detectDocumentTheme]);
 
-  const textRowRef = useRef(null);
   const waveRowRef = useRef(null);
-
-  const segmentsWithMeta = useMemo(() => {
+  const { segmentsWithMeta, totalPixelWidth } = useMemo(() => {
     if (!normalizedSegments.length) return [];
-    return normalizedSegments.map((segment, index) => {
+
+    let offsetPx = 0;
+    const segments = normalizedSegments.map((segment, index) => {
       const start = Number.isFinite(segment.start) ? segment.start : index * 4;
       const end = Number.isFinite(segment.end) ? segment.end : start + 3.5;
       const duration = Math.max(0.01, end - start);
-      const widthPercent = safeDuration > 0 ? duration / safeDuration : 1 / normalizedSegments.length;
-      const startIndex = Math.floor((start / safeDuration) * timelineSamples.length);
-      const endIndex = Math.max(startIndex + 2, Math.ceil((end / safeDuration) * timelineSamples.length));
-      const samples = timelineSamples.slice(startIndex, endIndex);
-
-      const startPercent = safeDuration > 0 ? start / safeDuration : 0;
-      const endPercent = safeDuration > 0 ? end / safeDuration : 1;
+      const widthPx = Math.max(MIN_SEGMENT_WIDTH, duration * PIXELS_PER_SECOND);
+      const startPx = offsetPx;
+      offsetPx += widthPx;
 
       return {
         segment: { ...segment, start, end },
-        widthPercent,
-        startPercent,
-        endPercent,
-        samples,
+        startPx,
+        widthPx,
       };
     });
-  }, [normalizedSegments, safeDuration, timelineSamples]);
+    return { segmentsWithMeta: segments, totalPixelWidth: offsetPx };
+  }, [normalizedSegments]);
 
   const activeSegmentId = useMemo(() => {
     if (!segmentsWithMeta.length) return null;
@@ -273,25 +259,16 @@ export function AudioTimelinePlayer({
     return active?.segment.id ?? null;
   }, [segmentsWithMeta, currentTime]);
 
-  const scrollActiveIntoView = useCallback(
-    (container) => {
-      if (!container || !activeSegmentId) return;
-      const activeMeta = segmentsWithMeta.find(({ segment }) => segment.id === activeSegmentId);
-      if (!activeMeta) return;
-
-      const target = activeMeta.startPercent * container.scrollWidth;
-      container.scrollTo({
-        left: target,
-        behavior: 'smooth',
-      });
-    },
-    [activeSegmentId, segmentsWithMeta],
-  );
-
   useEffect(() => {
-    scrollActiveIntoView(textRowRef.current);
-    scrollActiveIntoView(waveRowRef.current);
-  }, [scrollActiveIntoView]);
+    if (!waveRowRef.current || !activeSegmentId) return;
+    const activeMeta = segmentsWithMeta.find(({ segment }) => segment.id === activeSegmentId);
+    if (!activeMeta) return;
+
+    waveRowRef.current.scrollTo({
+      left: Math.max(0, activeMeta.startPx - 24),
+      behavior: 'smooth',
+    });
+  }, [activeSegmentId, segmentsWithMeta]);
 
   useEffect(() => {
     if (!isPlaying) return undefined;
@@ -402,42 +379,32 @@ export function AudioTimelinePlayer({
       <div className="flex flex-col gap-4 px-4 py-4">
         {segmentsWithMeta.length > 0 ? (
           <>
-            <div
-              ref={textRowRef}
-              className={`flex rounded-lg border px-3 py-4 overflow-x-auto ${theme === 'light' ? 'border-slate-200 bg-slate-50' : 'border-slate-800 bg-[#101524]'}`}
-              style={{ gap: 0 }}
-            >
-      {segmentsWithMeta.map(({ segment, startPercent, endPercent }) => (
-        <SegmentTextColumn
-          key={`${segment.id}-text`}
-          segment={segment}
-          startPercent={startPercent}
-          endPercent={endPercent}
-          isActive={segment.id === activeSegmentId}
-          theme={theme}
-          formatTime={(value) => formatTimestamp(value, true)}
+          <div
+            ref={waveRowRef}
+            className={`relative overflow-x-auto rounded-lg border ${
+              theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-900 bg-[#0b101d]'
+            }`}
+            style={{ height: SEGMENT_CONTENT_HEIGHT }}
+          >
+            <div className="relative h-full" style={{ width: `${Math.max(totalPixelWidth, MIN_SEGMENT_WIDTH)}px` }}>
+              <SegmentWaveform
+                samples={timelineSamples}
+                isActive
+                theme={theme}
+                className="absolute inset-0 h-full w-full opacity-80"
+              />
+              {segmentsWithMeta.map(({ segment, startPx, widthPx }) => (
+                <SegmentOverlayColumn
+                  key={`${segment.id}-overlay`}
+                  segment={segment}
+                  startPx={startPx}
+                  widthPx={widthPx}
+                  isActive={segment.id === activeSegmentId}
+                  theme={theme}
                 />
               ))}
             </div>
-            <div
-              ref={waveRowRef}
-              className={`relative h-20 overflow-x-auto rounded-lg border ${theme === 'light' ? 'border-slate-200 bg-white' : 'border-slate-900 bg-[#0b101d]'}`}
-            >
-              <div className="relative h-full min-w-full">
-                <div className="absolute inset-0 w-full">
-                  <SegmentWaveform samples={timelineSamples} isActive theme={theme} />
-                </div>
-                {segmentsWithMeta.map(({ segment, startPercent, endPercent }) => (
-                  <SegmentWaveChunk
-                    key={`${segment.id}-wave`}
-                    startPercent={startPercent}
-                    endPercent={endPercent}
-                    isActive={segment.id === activeSegmentId}
-                    theme={theme}
-                  />
-                ))}
-              </div>
-            </div>
+          </div>
           </>
         ) : (
           <div className={`rounded-lg border border-dashed px-6 py-12 text-center text-sm ${dashedBorder}`}>
