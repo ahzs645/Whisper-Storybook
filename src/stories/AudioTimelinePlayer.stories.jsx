@@ -56,26 +56,15 @@ const meta = {
 
 export default meta;
 
-const Template = (args) => (
-  <div className="min-h-screen bg-slate-100 p-8">
-    <div className="flex w-full items-center justify-center">
+export const TransportDemo = (args) => (
+  <div className="min-h-screen bg-background p-8 text-foreground">
+    <div className="w-full max-w-6xl">
       <AudioTimelinePlayer {...args} />
     </div>
   </div>
 );
 
-export const NarrationReview = Template.bind({});
-NarrationReview.args = {
+TransportDemo.args = {
   segments: waverySegments,
   duration: 40,
-  label: 'Wavery voiceover',
-  sampleRateLabel: 'Stereo / 48 kHz',
-};
-
-export const AwaitingTranscript = Template.bind({});
-AwaitingTranscript.args = {
-  segments: [],
-  label: 'Interview playback',
-  sampleRateLabel: 'Mono / 32 kHz',
-  duration: 0,
 };
