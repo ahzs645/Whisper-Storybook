@@ -164,13 +164,12 @@ export function SegmentAudioNote({
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <button
-            type="button"
-            className={`flex items-center gap-2 text-sm font-medium ${safeSpeakerColors.text} hover:opacity-75 transition-opacity`}
+          <span
+            className={`inline-flex items-center gap-2 rounded-full border ${safeSpeakerColors.border} ${safeSpeakerColors.bg} px-3 py-1 text-sm font-medium ${safeSpeakerColors.text}`}
           >
             <Users className="w-4 h-4" />
             <span>{speakerLabel || 'Speaker'}</span>
-          </button>
+          </span>
           {typeof note.startTime === 'number' && (
             <span className="text-xs text-muted-foreground font-mono">
               {formatTime?.(note.startTime) || '0:00'} • clip {formatTime?.(duration || note.durationSeconds || 0) || '0:00'}

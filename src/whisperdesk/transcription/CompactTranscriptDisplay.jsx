@@ -96,13 +96,12 @@ export function CompactTranscriptDisplay({
                       className="rounded-xl border border-border/70 bg-muted/40 p-4 shadow-sm space-y-4"
                     >
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <button
-                          type="button"
-                          className={`flex items-center gap-2 ${palette.text} hover:opacity-75 transition-opacity`}
+                        <span
+                          className={`inline-flex items-center gap-2 rounded-full border ${palette.border} ${palette.bg} px-3 py-1 text-sm font-medium ${palette.text}`}
                         >
                           <Users className="w-4 h-4" />
-                          <span className="font-medium">{speakerLabel}</span>
-                        </button>
+                          <span>{speakerLabel}</span>
+                        </span>
                         <Badge variant="outline" className="text-xs font-mono">
                           {formatTime(segment.start)}
                           {segment.end && segment.end !== segment.start ? ` → ${formatTime(segment.end)}` : ''}

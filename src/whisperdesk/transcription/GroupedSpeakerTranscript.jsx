@@ -126,9 +126,11 @@ export function GroupedSpeakerTranscript({
             {/* Speaker Header with Rename Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className={`flex items-center gap-2 mb-3 ${speakerColors.text} hover:opacity-75 transition-opacity`}>
+                <button
+                  className={`inline-flex items-center gap-2 mb-3 rounded-full border ${speakerColors.border} ${speakerColors.bg} px-3 py-1 text-sm font-medium ${speakerColors.text} hover:opacity-90 transition-opacity`}
+                >
                   <Users className="w-4 h-4" />
-                  <span className="font-medium">{group.speakerLabel}</span>
+                  <span>{group.speakerLabel}</span>
                 </button>
               </DropdownMenuTrigger>
               
