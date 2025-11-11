@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { TranscriptDisplay } from '../whisperdesk/transcription/TranscriptDisplay';
 import { CompactTranscriptDisplay } from '../whisperdesk/transcription/CompactTranscriptDisplay';
+import { SpeakerRenameMenuContent } from '../whisperdesk/transcription/SpeakerRenameMenuContent';
+import { DropdownMenu, DropdownMenuTrigger } from '@wd/components/ui/dropdown-menu';
+import { Button } from '@wd/components/ui/button';
+import { Users } from 'lucide-react';
 
 const sampleSegments = [
   {
@@ -134,15 +138,49 @@ const meta = {
 
 export default meta;
 
-const Template = (args) => {
+const Template = ({ showRenamePreview = false, ...args }) => {
   const [transcript, setTranscript] = useState(args.transcriptionResult);
+  const [renameValue, setRenameValue] = useState(args.initialRenameValue || '');
+  const [renameMenuOpen, setRenameMenuOpen] = useState(true);
+
+  const previewSpeaker = transcript?.segments?.[0];
+  const speakerLabel =
+    previewSpeaker?.speakerLabel || previewSpeaker?.speaker || 'Speaker';
+
+  const speakerColors = {
+    text: 'text-blue-600 dark:text-blue-400',
+  };
 
   return (
-    <TranscriptDisplay
-      {...args}
-      transcriptionResult={transcript}
-      onTranscriptionUpdate={setTranscript}
-    />
+    <div className="space-y-6">
+      <TranscriptDisplay
+        {...args}
+        transcriptionResult={transcript}
+        onTranscriptionUpdate={setTranscript}
+      />
+      {showRenamePreview && (
+        <div className="border rounded-lg bg-card p-4 shadow-sm max-w-md">
+          <p className="text-xs uppercase tracking-wide text-muted-foreground mb-3">
+            Speaker Rename Menu
+          </p>
+          <DropdownMenu open={renameMenuOpen} onOpenChange={setRenameMenuOpen}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Users className="w-4 h-4" />
+                {renameMenuOpen ? 'Hide Menu' : 'Show Menu'}
+              </Button>
+            </DropdownMenuTrigger>
+            <SpeakerRenameMenuContent
+              speakerLabel={speakerLabel}
+              speakerColors={speakerColors}
+              renameValue={renameValue}
+              onInputChange={setRenameValue}
+              onRename={() => console.info('Rename submitted', renameValue)}
+            />
+          </DropdownMenu>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -154,6 +192,7 @@ CompletedSession.args = {
   progress: 100,
   progressMessage: 'Transcription complete',
   onCopy: () => console.info('Transcript copied (mock)'),
+  showRenamePreview: true,
 };
 
 const CompactTemplate = (args) => <CompactTranscriptDisplay {...args} />;

@@ -1,11 +1,9 @@
 // src/renderer/whisperdesk-ui/src/components/transcription/GroupedSpeakerTranscript.jsx
 import React, { useState, useMemo } from 'react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from '@wd/components/ui/dropdown-menu'
-import { Button } from '@wd/components/ui/button'
-import { Input } from '@wd/components/ui/input'
-import { Badge } from '@wd/components/ui/badge'
+import { DropdownMenu, DropdownMenuTrigger } from '@wd/components/ui/dropdown-menu'
 import { Users } from 'lucide-react'
 import { toast } from 'sonner'
+import { SpeakerRenameMenuContent } from './SpeakerRenameMenuContent'
 
 export function GroupedSpeakerTranscript({ 
   segments, 
@@ -133,41 +131,13 @@ export function GroupedSpeakerTranscript({
                   <span>{group.speakerLabel}</span>
                 </button>
               </DropdownMenuTrigger>
-              
-              <DropdownMenuContent align="start" className="bg-card border-border p-4 min-w-[320px]">
-                <div className="text-muted-foreground text-sm mb-4">Change or Rename Speaker...</div>
-                
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Users className={`w-4 h-4 ${speakerColors.text}`} />
-                      <span className={speakerColors.text}>{group.speakerLabel}</span>
-                    </div>
-                    <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded">current</span>
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      value={renameValue}
-                      onChange={(e) => updateRenameInput(group.speakerId, e.target.value)}
-                      placeholder="Rename Speaker..."
-                      className="bg-background border-border text-foreground text-sm flex-1"
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter') {
-                          handleSpeakerRename(group.speakerId, group.speakerLabel)
-                        }
-                      }}
-                    />
-                    <Button 
-                      onClick={() => handleSpeakerRename(group.speakerId, group.speakerLabel)}
-                      className="bg-primary hover:bg-primary/90 text-primary-foreground text-sm px-4"
-                      disabled={!renameValue.trim()}
-                    >
-                      Rename
-                    </Button>
-                  </div>
-                </div>
-              </DropdownMenuContent>
+              <SpeakerRenameMenuContent
+                speakerLabel={group.speakerLabel}
+                speakerColors={speakerColors}
+                renameValue={renameValue}
+                onInputChange={(value) => updateRenameInput(group.speakerId, value)}
+                onRename={() => handleSpeakerRename(group.speakerId, group.speakerLabel)}
+              />
             </DropdownMenu>
 
             {/* Speaker Segments */}
